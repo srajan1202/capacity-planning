@@ -105,7 +105,7 @@ export class ElasticCloudClient {
 	}
 
 	prepareDeploymentPayload(data) {
-		const { deploymentTemplateId, region, clusterName } = data.equivalentElasticCloudArch
+		const { deploymentTemplateId, region, clusterName } = data
 
 		const elasticClusterTopology = this.prepareElasticClusterTopology(data)
 		const kibanaTopology = this.prepareKibanaTopology(data)
@@ -135,7 +135,7 @@ export class ElasticCloudClient {
 	}
 
 	prepareElasticClusterTopology(data) {
-		const { advanceSettings, region } = data.equivalentElasticCloudArch
+		const { advanceSettings, region } = data
 		const topologies = []
 		if (advanceSettings.hot) {
 			topologies.push({
@@ -249,7 +249,7 @@ export class ElasticCloudClient {
 	}
 
 	prepareKibanaTopology(data) {
-		const { region } = data.equivalentElasticCloudArch
+		const { region } = data
 
 		if (true) {
 			return [

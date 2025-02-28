@@ -1,15 +1,15 @@
 import { Router, Request, Response } from "express"
 import { SplunkClient } from "../clients/splunk.client"
 import { ElasticCloudClient } from "../clients/elastic-cloud.client"
-import { verifyToken } from "../utils/contstants"
 
 const router = Router()
 
-router.post("/deployments", verifyToken, async (req: Request, res: Response) => {
+router.post("/deployments", async (req: Request, res: Response) => {
 	try {
 		const { payload, elasticCloudApiKey } = req.body
 		const elasticCloud = new ElasticCloudClient(elasticCloudApiKey)
-		await elasticCloud.createDeployment(payload)
+		const template = elasticCloud.prepareDeploymentPayload(payload)
+		await elasticCloud.createDeployment(template)
 	} catch (error) {
 		console.error("Error creating cluster:", error.response?.data || error.message)
 		res.status(500).json({
@@ -18,13 +18,13 @@ router.post("/deployments", verifyToken, async (req: Request, res: Response) => 
 	}
 })
 
-router.get("/regions", verifyToken, async (req, res) => {
+router.get("/regions", async (req, res) => {
 	const elasticCloud = new ElasticCloudClient({ apiKey: "" })
 	const regions = await elasticCloud.getRegions()
 	res.send(regions)
 })
 
-router.get("/hardware-profiles", verifyToken, async (req, res) => {
+router.get("/hardware-profiles", async (req, res) => {
 	const elasticCloud = new ElasticCloudClient({ apiKey: "" })
 	const profiles = await elasticCloud.getHardwareProfile()
 	res.send(profiles)
@@ -36,7 +36,7 @@ router.get("/elasticsearch/versions", async (req, res) => {
 	res.send(versions)
 })
 
-router.post("/prepare", verifyToken, async (req, res) => {
+router.post("/prepare", async (req, res) => {
 	try {
 		const { url, username, password } = req.body.splunk
 		const splunk = new SplunkClient({ url: url, username, password })
@@ -64,6 +64,7 @@ router.post("/prepare", verifyToken, async (req, res) => {
 		const equivalentElasticCloudArch = {
 			deploymentTemplateId: "gcp-general-purpose",
 			region: "gcp-asia-east1",
+			clusterName: "elstic-cluster",
 			indexes: elasticIndexes,
 			elasticVersion: "8.7.0",
 			advanceSettings: {
@@ -124,24 +125,18 @@ router.post("/prepare", verifyToken, async (req, res) => {
 	}
 })
 
-router.post("/prepare-iac", verifyToken, async (req, res) => {
+router.post("/prepare-iac", async (req, res) => {
 	try {
 		const data = req.body
-
-		const { apiKey } = data.equivalentElasticCloudArch
-		const elasticCloud = new ElasticCloudClient({ apiKey: apiKey })
+		const elasticCloud = new ElasticCloudClient({ apiKey: "" })
 		const payload = elasticCloud.prepareDeploymentPayload(data)
-		console.log(payload)
-		const deployment = await elasticCloud.createDeployment(payload)
-		console.log(deployment)
 		res.send({
 			curl: `
         curl --location 'https://api.elastic-cloud.com/api/v1/deployments' \
-        --header 'Content-Type: application/json' \
-        --header 'Authorization: ${data}' \
+        --header 'Content-Type: "application/json"' \
+        --header 'Authorization: "${data.apiKey}"' \
         --data '${JSON.stringify(payload)}'
         `,
-			payload: payload,
 		})
 	} catch (err) {
 		console.log(err.message)

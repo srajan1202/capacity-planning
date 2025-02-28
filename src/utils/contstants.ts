@@ -1,6 +1,3 @@
-import jwt from "jsonwebtoken"
-import bcrypt from "bcrypt"
-
 export const storageMappingHot = {
 	45: { ram: "1GB", cpu: "2.5 vCPU" },
 	90: { ram: "2GB", cpu: "2.5 vCPU" },
@@ -68,24 +65,3 @@ export const getRamInMBCold = (storageValue) => {
 	console.log(ramInGB)
 	return ramInGB * 1024 // Convert GB to MB
 }
-
-export const verifyToken = (req, res, next) => {
-	const token = req.headers["authorization"]
-	if (!token) return res.status(403).json({ message: "Access denied" })
-
-	jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
-		if (err) return res.status(401).json({ message: "Invalid token" })
-		req.user = decoded
-		next()
-	})
-}
-
-export const evalBcrypts = async (pass) => {
-	return await bcrypt.hash(pass, 10)
-}
-export const users = [
-	{
-		username: "elastic-service-account",
-		hashedPassword: "$2b$10$u9mbeW3aWdutkGqGPCjU1Oc2NcZnt5mCn.2XGgZw913U5PWCi72Iy",
-	},
-]

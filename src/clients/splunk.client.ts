@@ -87,9 +87,7 @@ export class SplunkClient {
 	async getIndexes() {
 		try {
 			const indexes = (
-				await this.search(
-					`| rest /services/data/indexes | table title currentDBSizeMB totalEventCount repFactor`
-				)
+				await this.search(`| rest /services/data/indexes | table title currentDBSizeMB totalEventCount repFactor`)
 			).results
 			const map = {} //remove duplicate indexes
 			return indexes.filter((index) => {
