@@ -1,93 +1,30 @@
 import axios from "axios"
 import qs from "querystring"
 import { SplunkConfig } from "../types/splunk.types"
+import { SplunkClient } from "../clients/splunk.client"
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0" // Disable SSL certificate validation
 
-export class SplunkClient {
-	splunkUrl: string
-	token?: string
-	username?: string
-	password?: string
-	constructor({ url, token, password, username }: SplunkConfig) {
-		this.splunkUrl = url
-		this.token = token
-		this.username = username
-		this.password = password
+export class SplunkService {
+	client: SplunkClient
+	constructor(client: SplunkClient) {
+		this.client = client
 	}
 
 	async searchDataByRange(index, startTime, endTime) {
-		return await this.search(`search index=${index} earliest="${startTime}" latest="${endTime}"`)
+		return await this.client.search(`search index=${index} earliest="${startTime}" latest="${endTime}"`)
 	}
 
 	async searchData(index) {
-		return await this.search(`search index=${index}`)
-	}
-
-	async search(searchQuery) {
-		let data = qs.stringify({
-			search: searchQuery,
-			output_mode: "json",
-			adhoc_search_level: "smart",
-		})
-
-		let config = {
-			method: "post",
-			maxBodyLength: Infinity,
-			url: `${this.splunkUrl}/services/search/jobs`,
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-				Authorization: this.getAuthToken(),
-			},
-			data: data,
-		}
-
-		try {
-			const responseSid = await axios.request(config)
-			const sid = responseSid.data.sid
-			let data = ""
-			do {
-				await this.sleep(50)
-				data = await this.getSearchData(sid)
-			} while (data === "")
-			return data
-		} catch (error) {
-			await this.sleep(50)
-			return await this.search(searchQuery)
-		}
-	}
-
-	async sleep(ms) {
-		return new Promise((resolve) => setTimeout(resolve, ms))
-	}
-
-	async getSearchData(sid) {
-		let data = qs.stringify({
-			output_mode: "json",
-		})
-
-		let config = {
-			method: "get",
-			maxBodyLength: Infinity,
-			url: `${this.splunkUrl}/services/search/jobs/${sid}/results`,
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-				Authorization: this.getAuthToken(),
-			},
-			data: data,
-		}
-		try {
-			const response = await axios.request(config)
-			return response.data
-		} catch (error) {
-			throw error
-		}
+		return await this.client.search(`search index=${index}`)
 	}
 
 	async getIndexes() {
 		try {
 			const indexes = (
-				await this.search(`| rest /services/data/indexes | table title currentDBSizeMB totalEventCount repFactor`)
+				await this.client.search(
+					`| rest /services/data/indexes | table title currentDBSizeMB totalEventCount repFactor`
+				)
 			).results
 			const map = {} //remove duplicate indexes
 			return indexes.filter((index) => {
@@ -103,20 +40,6 @@ export class SplunkClient {
 		}
 	}
 
-	getAuthToken() {
-		if (this.token) {
-			return `Bearer ${this.token}`
-		} else {
-			return this.getBasicAuthToken()
-		}
-	}
-
-	getBasicAuthToken() {
-		const credentials = `${this.username}:${this.password}`
-		const base64Credentials = Buffer.from(credentials).toString("base64")
-		return `Basic ${base64Credentials}`
-	}
-
 	async getCurrentIndexedDataSizeInMB() {
 		let data = qs.stringify({
 			output_mode: "json",
@@ -125,11 +48,11 @@ export class SplunkClient {
 		let config = {
 			method: "get",
 			maxBodyLength: Infinity,
-			url: `${this.splunkUrl}/services/data/indexes`,
+			url: `${this.client.splunkUrl}/services/data/indexes`,
 			headers: {
 				output_mode: "json",
 				"Content-Type": "application/x-www-form-urlencoded",
-				Authorization: this.getAuthToken(),
+				Authorization: this.client.getAuthToken(),
 			},
 			data: data,
 		}
@@ -140,7 +63,7 @@ export class SplunkClient {
 	}
 
 	async getNodeCounts() {
-		const data = await this.search(`| rest /services/server/info splunk_server=*
+		const data = await this.client.search(`| rest /services/server/info splunk_server=*
 | table title host host_fqdn guid version serverName server_roles numberOfCores numberOfVirtualCores os_build os_name os_version physicalMemoryMB`)
 		const getCountByRole = (role) => {
 			return data.results.map((node) => node.server_roles).filter((roles) => roles.indexOf(role) > -1).length
@@ -153,7 +76,7 @@ export class SplunkClient {
 	}
 
 	async getDefaultrepFactors() {
-		const data = await this.search(`| rest /services/data/indexes | table title repFactor`)
+		const data = await this.client.search(`| rest /services/data/indexes | table title repFactor`)
 		return data.results.map((index) => ({
 			name: index.title,
 			repFactor: index.repFactor,
@@ -204,7 +127,7 @@ export class SplunkClient {
 	}
 
 	async getIndexSize(indexName) {
-		const data = await this.search(
+		const data = await this.client.search(
 			`| rest splunk_server_group=dmc_group_indexer splunk_server_group="*" /services/data/indexes/${indexName}
             | join title splunk_server type=outer [| rest /services/data/indexes-extended/${indexName}]
             | eval bucketCount = coalesce(total_bucket_count, 0)
@@ -234,7 +157,7 @@ export class SplunkClient {
 	}
 
 	async getBucketSizes(indexSpecs, compressionRatio, expansionRatio, esReplicationFactor) {
-		const data = await this.search(`
+		const data = await this.client.search(`
       | dbinspect index=*
         | stats sum(sizeOnDiskMB) as sizeOnDiskMB sum(eventCount) as eventCount dc(bucketId) as totalBuckets by index state
         | rename state as bucket`)
@@ -315,7 +238,7 @@ export class SplunkClient {
 		}
 	}
 	async getNodeSpecs() {
-		const data = await this.search(
+		const data = await this.client.search(
 			`| rest /services/server/status/partitions-space 
        | table splunk_server mount_point capacity available
         `
