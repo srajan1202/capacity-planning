@@ -233,7 +233,7 @@ export class SplunkClient {
 		return data
 	}
 
-	async getBucketSizes(indexSpecs, compressionRatio, expansionRatio, esReplicationFactor) {
+	async getBucketSizes(indexSpecs, compressionRatio, expansionRatio) {
 		const data = await this.search(`
       | dbinspect index=*
         | stats sum(sizeOnDiskMB) as sizeOnDiskMB sum(eventCount) as eventCount dc(bucketId) as totalBuckets by index state
@@ -255,8 +255,8 @@ export class SplunkClient {
 				const adjustedSize = parseFloat(curr.sizeOnDiskMB) / replicationFactor
 				acc[curr.bucket] =
 					(acc[curr.bucket] || 0) +
-					Math.ceil(adjustedSize * compressionRatio * expansionRatio * esReplicationFactor)
-				total = total + Math.ceil(adjustedSize * compressionRatio * expansionRatio * esReplicationFactor)
+					Math.ceil(adjustedSize * compressionRatio * expansionRatio)
+				total = total + Math.ceil(adjustedSize * compressionRatio * expansionRatio)
 			}
 			return acc
 		}, {})
@@ -274,7 +274,7 @@ export class SplunkClient {
 			if (!curr.index.startsWith("_")) {
 				const adjustedSize = parseFloat(curr.sizeOnDiskMB) / replicationFactor
 				acc[curr.bucket] = (acc[curr.bucket] || 0) + Math.ceil(adjustedSize * compressionRatio)
-				total = total + Math.ceil(adjustedSize * compressionRatio * expansionRatio * esReplicationFactor)
+				total = total + Math.ceil(adjustedSize * compressionRatio * expansionRatio)
 			}
 			return acc
 		}, {})
@@ -298,7 +298,7 @@ export class SplunkClient {
 				const adjustedSize = parseFloat(currentBucket.sizeOnDiskMB) / replicationFactor
 				return {
 					name: currentBucket.index,
-					storage: Math.ceil(adjustedSize * compressionRatio * expansionRatio * esReplicationFactor),
+					storage: Math.ceil(adjustedSize * compressionRatio * expansionRatio),
 				}
 			})
 			.filter((index) => !!index)
