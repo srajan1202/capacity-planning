@@ -18,7 +18,7 @@ app.get("/health", (req: Request, res: Response) => {
 	})
 })
 
-app.use("/api/v1", capacityPlanningRoutes)
+app.use("/api/v1/capacity-planning", capacityPlanningRoutes)
 
 app.listen(port, () => {
 	console.log("Server started at port 3000")

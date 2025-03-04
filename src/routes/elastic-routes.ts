@@ -103,7 +103,7 @@ router.post("/prepare", async (req, res) => {
 							? bucketSizes.totals.frozen
 							: 0,
 			replication: 2,
-			bufferStorage: 15,
+			bufferPercentage: 15,
 			totalStorageElastic: Math.ceil(
 				(bucketSizes.totals.hot
 					? bucketSizes.totals.hot
