@@ -45,7 +45,7 @@ router.post("/prepare", async (req, res) => {
 			splunk.getIndexSpecs(),
 			splunk.getNodeSpecs(),
 		])
-		const bucketSizes = await splunk.getBucketSizes(indexSpecs, 2, 1.5, 2) //splunk compression factor is 50% and ES expansion factor is 1.5 times
+		const bucketSizes = await splunk.getBucketSizes(indexSpecs, 2, 1.5) //splunk compression factor is 50% and ES expansion factor is 1.5 times
 		// const rawIndexStorage = await splunk.evaluateRawDataStorage(indexSpecs);
 		// console.log(rawIndexStorage);
 
@@ -103,7 +103,7 @@ router.post("/prepare", async (req, res) => {
 							? bucketSizes.totals.frozen
 							: 0,
 			replication: 2,
-			bufferStorage: 15,
+			bufferPercentage: 15,
 			totalStorageElastic: Math.ceil(
 				(bucketSizes.totals.hot
 					? bucketSizes.totals.hot
