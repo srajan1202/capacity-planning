@@ -96,12 +96,20 @@ export class ElasticCloudClient {
 	}
 
 	async getVersions() {
-		return [
-			{
-				value: "8.17.0",
-				display: "8.17.0(latest)",
-			},
-		]
+		const res = await axios.get<{ prerelease: boolean; tag_name: string }[]>(
+			"https://api.github.com/repos/elastic/elasticsearch/releases"
+		)
+		return res.data
+			.filter((release) => !release.prerelease)
+			.map((release) => ({
+				value: release.tag_name.replace("v", ""),
+				display: release.tag_name,
+			}))
+			.sort((a, b) => {
+				if (a.value > b.value) return -1
+				if (a.value < b.value) return 1
+				return 0
+			})
 	}
 
 	prepareDeploymentPayload(data) {
