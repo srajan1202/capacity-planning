@@ -16,6 +16,14 @@ const getNextValidSize = (size) => {
 	return allowedSizes[allowedSizes.length - 1]
 }
 
+export interface InstanceConfigurations {
+	[key: string]: {
+		hot?: string
+		warm?: string
+		cold?: string
+		frozen?: string
+	}
+}
 export class ElasticCloudClient {
 	apiKey: string
 	constructor({ apiKey }: { apiKey: string }) {
@@ -283,5 +291,24 @@ export class ElasticCloudClient {
 				},
 			]
 		}
+	}
+
+	async getInstanceConfigurations(region = "us-east-1"): Promise<InstanceConfigurations> {
+		const instanceConfigurations = {}
+		const templates = await axios.get(`${ELASTIC_CLOUD_URL}/deployments/templates?region=${region}`)
+
+		templates.data.forEach((template) => {
+			const templateConfiguration = {}
+			instanceConfigurations[template.id] = templateConfiguration
+
+			template.deployment_template.resources.elasticsearch[0].plan.cluster_topology.forEach((topology) => {
+				const { instance_configuration_id, elasticsearch } = topology
+				if (elasticsearch?.node_attributes?.data) {
+					templateConfiguration[elasticsearch.node_attributes.data] = instance_configuration_id
+				}
+			})
+		})
+
+		return instanceConfigurations
 	}
 }
